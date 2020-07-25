@@ -1,0 +1,75 @@
+
+RUPEE COPYRIGHT AND LICENCE AGREEMENTS
+===============================================================================
+
+Copyright (C) 2020 Matthias Hecker
+
+Rupee is distributed under the terms of both the MIT license
+and the Apache License (Version 2.0), with some dependencies
+covered by various BSD-like and LGPL licenses.
+
+For more details see [LICENSE-APACHE](LICENCE-APACHE),
+[LICENSE-MIT](LICENSE-MIT), and [COPYING](COPYING) for more
+information.
+
+Please write mail@mattzque.com with any concerns regarding
+the license or distribution of Rupee.
+
+
+
+
+===============================================================================
+LIBVIPS
+===============================================================================
+
+libvips is licensed under the [LGPL
+2.1+](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html).
+
+See lib/vips-*/ for more information.
+
+Authors of VIPS
+
+Nicos Dessipris and Kirk Martinez started VIPS in 1990.
+
+John Cupitt started ip in late 1990, and took over maintenance of the VIPS
+library in 1995.
+
+Ruven Pillay, Steve Perry, Lars Raffelt, David Saunders, Jean-Philippe
+Laurant, Ahmed Abood, Helene Chahine, Joe Padfield, Andrey Kiselev, Lev
+Serebryakov, Simon Goodall, Konrad Lang, Markus Wollgarten, Jesper Friis,
+Tom Vajzovic, Chris Leick and others contributed patches for the library
+and ip.
+
+Hans Breuer contributed many win32 compatibility fixes and a win32 build
+system. Dennis Lubert cleaned up the C++ API.
+
+Jose Manuel Menendez Garcia, Javier Alejandre Arenas, and Juan Torres Arjona
+contributed the tmake VIPS.DLL build system and the MSVC project files.
+
+Nicolas Robidoux contributed optimized bilinear and bicubic code to
+the VipsInterpolate class and, with Chantal Racette and Adam Turcotte,
+contributed the novel LBB, Nohalo and VSQBS interpolators.
+
+VIPS was originally written by Nicos Dessipris, Kirk Martinez and John Cupitt.
+
+Many people have contributed to VIPS by reporting problems, suggesting
+improvements, or offering code.
+
+	Matthew Hanson
+	Joe Padfield
+	Haida Liang
+	Ian Clarke
+	Steve Perry
+	Stephen Chang
+	David Saunders
+	Mike Westmacott
+	Chris Hurst
+	Jim Coddington
+	Lou
+	Rachel Billinge
+	Colin White
+	ENST
+	Thomson-CSF
+
+We've also had very helpful funding from the European Commission and
+Hewlett-Packard.

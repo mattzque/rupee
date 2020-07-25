@@ -1,0 +1,14 @@
+[storage.meta]
+backend = "mem"
+
+[storage.meta.mem]
+dummy = 42
+
+[storage.blob]
+backend = "mem"
+
+[storage.blob.mem]
+dummy = 42
+
+[transcoding]
+default_encoding

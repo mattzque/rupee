@@ -1,0 +1,12 @@
+[package]
+name = "vips"
+version = "0.1.0"
+authors = ["Matthias Hecker <matthias@monstyle.io>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+vips-sys = { path = "../vips-sys" }
+lazy_static = "1.4.0"
+tempfile = "3.1.0"

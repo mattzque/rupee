@@ -1,0 +1,72 @@
+# Rupee Development Dockerfile
+FROM ubuntu:focal
+
+ENV TZ=UTC
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# update and install global system dependencies
+RUN apt-get update -y && \
+    apt-get install -y \
+        curl \
+        wget \
+        build-essential \
+        pkg-config \
+        glib2.0-dev \
+        libglib2.0-dev \
+        llvm \
+        clang \
+        gdb
+
+ENV LC_CTYPE=C.UTF-8
+
+# install rust
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+RUN cargo install bindgen && \
+    rustup component add rustfmt --toolchain stable-x86_64-unknown-linux-gnu
+# useful for more advanced gdb debugging (GDB Enchanced Features)
+RUN wget -q -O- https://github.com/hugsy/gef/raw/master/scripts/gef.sh | sh
+
+
+# install libvips, with support for most relevant image types
+RUN apt-get install -y \
+        libexpat1-dev \
+        libjpeg-turbo8-dev \
+        libmagick++-dev \
+        libexif-dev \
+        libgif-dev \
+        librsvg2-dev \
+        libgsf-1-dev \
+        libtiff5-dev \
+        libfftw3-dev \
+        liblcms2-dev \
+        libpng-dev \
+        liborc-0.4-dev \
+        libcfitsio-dev \
+        libwebp-dev
+
+# libimagequant could also be used for png optimization, but it is license is incompatible with MIT/Apache
+ARG VIPS_VERSION=8.9.1
+#ENV C_INCLUDE_PATH=:/usr/include/glib-2.0
+#ENV LD_LIBRARY_PATH=/usr/local/lib
+RUN wget -O /tmp/vips-${VIPS_VERSION}.tar.gz \
+    https://github.com/libvips/libvips/releases/download/v${VIPS_VERSION}/vips-${VIPS_VERSION}.tar.gz && \
+    cd /tmp && tar -xvzf vips-${VIPS_VERSION}.tar.gz && cd vips-${VIPS_VERSION} && \
+    ./configure && \
+    CFLAGS="-I/usr/include/glib-2.0" make -j$(nproc) && make install
+
+
+# install rupee dependencies
+WORKDIR /srv
+COPY vendor /srv/vendor
+COPY Cargo.toml /srv/Cargo.toml
+COPY Cargo.lock /srv/Cargo.lock
+RUN mkdir src && \
+    echo "// dummy file" > src/lib.rs && \
+    cargo build && \
+    rm target/debug/.fingerprint/*rupee* -R
+
+
+# install rupee itself
+COPY . /srv
+RUN cargo build

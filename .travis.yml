@@ -1,0 +1,12 @@
+---
+
+language: rust
+
+services:
+  - docker
+
+before_install:
+  - docker build -f Dockerfile.development -t mattzque/rupee .
+
+script:
+  - docker run mattzque/rupee cargo test

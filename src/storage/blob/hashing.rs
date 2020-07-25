@@ -57,49 +57,49 @@ impl Hash {
         match *self {
             Hash::Sha2_256 => {
                 let mut h = Sha256::new();
-                h.input(bytes);
-                h.result().to_vec()
+                h.update(bytes);
+                h.finalize().to_vec()
             }
             Hash::Sha2_512 => {
                 let mut h = Sha512::new();
-                h.input(bytes);
-                h.result().to_vec()
+                h.update(bytes);
+                h.finalize().to_vec()
             }
             Hash::Sha3_224 => {
                 let mut h = Sha3_224::new();
-                h.input(bytes);
-                h.result().to_vec()
+                h.update(bytes);
+                h.finalize().to_vec()
             }
             Hash::Sha3_256 => {
                 let mut h = Sha3_256::new();
-                h.input(bytes);
-                h.result().to_vec()
+                h.update(bytes);
+                h.finalize().to_vec()
             }
             Hash::Sha3_384 => {
                 let mut h = Sha3_384::new();
-                h.input(bytes);
-                h.result().to_vec()
+                h.update(bytes);
+                h.finalize().to_vec()
             }
             Hash::Sha3_512 => {
                 let mut h = Sha3_512::new();
-                h.input(bytes);
-                h.result().to_vec()
+                h.update(bytes);
+                h.finalize().to_vec()
             }
             Hash::T1ha => t1ha::hash64(bytes).to_be_bytes().to_vec(),
             Hash::Blake2s => {
                 let mut h = Blake2s::new();
-                h.input(bytes);
-                h.result().to_vec()
+                h.update(bytes);
+                h.finalize().to_vec()
             }
             Hash::Blake2b => {
                 let mut h = Blake2b::new();
-                h.input(bytes);
-                h.result().to_vec()
+                h.update(bytes);
+                h.finalize().to_vec()
             }
             Hash::Whirlpool => {
                 let mut h = Whirlpool::new();
-                h.input(bytes);
-                h.result().to_vec()
+                h.update(bytes);
+                h.finalize().to_vec()
             }
         }
     }

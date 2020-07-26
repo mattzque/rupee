@@ -8,6 +8,8 @@
 //!
 use crate::domain::meta::BlobMeta;
 use crate::storage::blob::{BlobRef, BlobStorage, BlobStorageError};
+use crate::{load_fixture};
+use serde::{Serialize, Deserialize};
 use std::any::Any;
 use std::collections::HashMap;
 use std::fmt;
@@ -16,10 +18,12 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::SeekFrom;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::usize;
+use std::convert::TryInto;
 
 pub struct BucketBlobRef {
     /// This refers to the bucket file index.
@@ -43,7 +47,7 @@ impl BlobRef for BucketBlobRef {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct BucketBlobStorageConfig {
     /// The bucket data directory.
     pub path: PathBuf,
@@ -121,6 +125,27 @@ impl BucketFile {
                     "Error opening bucket file!",
                 )),
             }
+        }
+    }
+
+    fn new_readonly(
+        path: &Path,
+        index: usize,
+    ) -> Result<BucketFile, BlobStorageError> {
+        let filename = BucketFile::format_bucket(path, index);
+        match OpenOptions::new()
+            .write(false)
+            .read(true)
+            .open(filename)
+        {
+            Ok(file) => Ok(BucketFile {
+                path: path.to_path_buf(),
+                index,
+                descriptor: file,
+            }),
+            Err(x) => Err(BlobStorageError::CreateStorageError(
+                "Error opening bucket file!",
+            ))
         }
     }
 
@@ -202,11 +227,21 @@ impl BucketFile {
             Err(_) => Err(BlobStorageError::WriteError),
         }
     }
+
+    /// Read a single blob out of the bucket.
+    fn read(&mut self, offset: usize, size: usize) -> Result<Vec<u8>, BlobStorageError> {
+        self.seek(SeekFrom::Start(offset.try_into().unwrap()))?;
+
+        let mut buffer = vec![0; size as usize];
+        self.descriptor.read_exact(&mut buffer)?;
+
+        Ok(buffer)
+    }
 }
 impl Drop for BucketFile {
     fn drop(&mut self) {
         let lockfile = BucketFile::format_bucket(&self.path, self.index).with_extension("lock");
-        println!("Bucket: release lock file: {:?}", lockfile);
+        //println!("Bucket: release lock file: {:?}", lockfile);
         if let Err(_) = fs::remove_file(lockfile) {
             println!("Bucket: Error removing bucket lock file!");
         }
@@ -272,11 +307,39 @@ impl BucketBlobStorage {
 
         Ok(Self { bucket, config })
     }
+
+    fn get_current_bucket(&mut self) -> Result<&mut BucketFile, BlobStorageError> {
+        if self.bucket.tell()? >= self.config.max_size as usize {
+            self.bucket = Box::new(BucketFile::find_available(&self.config.path, self.config.max_size)?);
+        }
+        Ok(&mut self.bucket)
+    }
 }
 
 impl BlobStorage for BucketBlobStorage {
-    fn get(&self, meta: &BlobMeta, blob_ref: &Box<dyn BlobRef>) -> Result<&[u8], BlobStorageError> {
-        Err(BlobStorageError::ReadBlobRefMismatch)
+    /// Read blob back from storage.
+    /// This reads the entire blob and returns it.
+    /// Args:
+    ///     meta: storage-independent blob meta reference
+    ///     blob_ref: storage-specific blob reference
+    /// Returns:
+    ///     bytes or error (of type BlobStorageError)
+    fn get(&self, meta: &BlobMeta, blob_ref: &Box<dyn BlobRef>) -> Result<Vec<u8>, BlobStorageError> {
+        if let Some(blob_ref) = blob_ref.any().downcast_ref::<BucketBlobRef>() {
+            if blob_ref.size != meta.size {
+                Err(BlobStorageError::ReadStorageError)
+            }
+            else {
+                println!("blob_ref.offset => {:?}", blob_ref.offset);
+                println!("blob_ref.size => {:?}", blob_ref.size);
+                match BucketFile::new_readonly(&self.config.path, blob_ref.bucket) {
+                    Ok(mut bucket) => bucket.read(blob_ref.offset, blob_ref.size),
+                    Err(x) => Err(BlobStorageError::ReadStorageError)
+                }
+            }
+        } else {
+            Err(BlobStorageError::ReadBlobRefMismatch)
+        }
     }
 
     fn put(
@@ -284,11 +347,13 @@ impl BlobStorage for BucketBlobStorage {
         meta: &BlobMeta,
         buffer: Vec<u8>,
     ) -> Result<Box<dyn BlobRef>, BlobStorageError> {
+        let bucket = self.get_current_bucket()?;
+
         // store in current bucket
-        // TODO overflow bucket / create new bucket when overflown
-        let offset = self.bucket.write(&buffer)?;
+        let offset = bucket.write(&buffer)?;
+        println!("offset => {:?}", offset);
         let blob_ref = BucketBlobRef {
-            bucket: self.bucket.index(),
+            bucket: bucket.index(),
             offset,
             size: buffer.len(),
         };
@@ -309,15 +374,15 @@ mod tests {
     extern crate tempfile;
     use crate::domain::meta::BlobMeta;
     use crate::storage::blob::backend::bucket::*;
-    use crate::storage::blob::create_blob_storage;
 
     use std::path::Path;
     use std::thread;
     use std::time::Duration;
     use tempfile::tempdir;
 
+
     #[test]
-    fn test_blob_bucket() {
+    fn test_blob_race() {
         let mut threads = Vec::new();
         let dir = tempdir().expect("expected to write temporary directory!");
 
@@ -347,8 +412,8 @@ mod tests {
 
                 thread::sleep(Duration::from_millis(100));
 
-                println!("{:?}", storage.config);
-                // storage.config
+                println!("ref -> {:?}", ref_.display());
+                println!("config -> {:?}", storage.config);
             });
             threads.push(handle);
         }
@@ -356,22 +421,88 @@ mod tests {
         for handle in threads {
             handle.join().expect("error, expecting to join thread!");
         }
+    }
 
-        /*
-        let mut storage = create_blob_storage("mem").expect("mem blob backend can't be created!");
+    #[test]
+    fn test_blob_bucket() {
+        // load test fixture files:
+        let image_1 = load_fixture(Path::new("images").join("rgb.jpeg"));
+        let image_1_meta = BlobMeta::new(image_1.len());
 
-        let buffer: Vec<u8> = vec![0, 42, 0];
-        let meta = BlobMeta::new(buffer.len());
+        let image_2 = load_fixture(Path::new("images").join("rgb.png"));
+        let image_2_meta = BlobMeta::new(image_2.len());
 
-        assert_eq!(buffer.len(), 3);
+        let image_3 = load_fixture(Path::new("images").join("rgba.png"));
+        let image_3_meta = BlobMeta::new(image_3.len());
 
-        let ref_ = storage.put(&meta, buffer).expect("put blob in mem storage failed!");
-        let buf = storage.get(&meta, &ref_).expect("getting blob from the mem storage failed!");
+        let dir = tempdir().expect("expected to write temporary directory!");
+        let config = BucketBlobStorageConfig {
+            path: dir.path().to_path_buf(),
+            max_size: 1024 * 1024 * 1024 * 24,
+        };
+        BucketBlobStorage::init(&config).expect("Error in init of bucket storage!");
+        let mut storage = BucketBlobStorage::new(config).expect("error creating the blob storage");
 
-        assert_eq!(buf.len(), 3);
-        assert_eq!(buf[0], 0);
-        assert_eq!(buf[1], 42);
-        assert_eq!(buf[2], 0);
-        */
+        // put images into bucket:
+        let reference_1 = storage.put(&image_1_meta, image_1.to_vec()).expect("put blob failed!");
+        let reference_2 = storage.put(&image_2_meta, image_2.to_vec()).expect("put blob failed!");
+        let reference_3 = storage.put(&image_3_meta, image_3.to_vec()).expect("put blob failed!");
+
+        // read back again
+        let image_1_res = storage.get(&image_1_meta, &reference_1).expect("get blob failed!").to_vec();
+        let image_2_res = storage.get(&image_2_meta, &reference_2).expect("get blob failed!").to_vec();
+        let image_3_res = storage.get(&image_3_meta, &reference_3).expect("get blob failed!").to_vec();
+
+        assert_eq!(image_1.len(), image_1_res.len());
+        assert_eq!(image_2.len(), image_2_res.len());
+        assert_eq!(image_3.len(), image_3_res.len());
+
+        assert_eq!(image_1, image_1_res);
+        assert_eq!(image_2, image_2_res);
+        assert_eq!(image_3, image_3_res);
+    }
+
+    #[test]
+    fn test_blob_bucket_chunking() {
+        // tests files placed in different buckets
+        // load test fixture files:
+        let image_1 = load_fixture(Path::new("images").join("rgb.jpeg"));
+        let image_1_meta = BlobMeta::new(image_1.len());
+
+        let image_2 = load_fixture(Path::new("images").join("rgb.png"));
+        let image_2_meta = BlobMeta::new(image_2.len());
+
+        let image_3 = load_fixture(Path::new("images").join("rgba.png"));
+        let image_3_meta = BlobMeta::new(image_3.len());
+
+        let dir = tempdir().expect("expected to write temporary directory!");
+        let config = BucketBlobStorageConfig {
+            path: dir.path().to_path_buf(),
+            max_size: 1024,  // small size, each image gets placed in different bucket
+        };
+        BucketBlobStorage::init(&config).expect("Error in init of bucket storage!");
+        let mut storage = BucketBlobStorage::new(config).expect("error creating the blob storage");
+
+        // put images into bucket:
+        let reference_1 = storage.put(&image_1_meta, image_1.to_vec()).expect("put blob failed!");
+        let reference_2 = storage.put(&image_2_meta, image_2.to_vec()).expect("put blob failed!");
+        let reference_3 = storage.put(&image_3_meta, image_3.to_vec()).expect("put blob failed!");
+
+        assert_eq!(reference_1.any().downcast_ref::<BucketBlobRef>().expect("").bucket, 1);
+        assert_eq!(reference_2.any().downcast_ref::<BucketBlobRef>().expect("").bucket, 2);
+        assert_eq!(reference_3.any().downcast_ref::<BucketBlobRef>().expect("").bucket, 3);
+
+        // read back again
+        let image_1_res = storage.get(&image_1_meta, &reference_1).expect("get blob failed!").to_vec();
+        let image_2_res = storage.get(&image_2_meta, &reference_2).expect("get blob failed!").to_vec();
+        let image_3_res = storage.get(&image_3_meta, &reference_3).expect("get blob failed!").to_vec();
+
+        assert_eq!(image_1.len(), image_1_res.len());
+        assert_eq!(image_2.len(), image_2_res.len());
+        assert_eq!(image_3.len(), image_3_res.len());
+
+        assert_eq!(image_1, image_1_res);
+        assert_eq!(image_2, image_2_res);
+        assert_eq!(image_3, image_3_res);
     }
 }

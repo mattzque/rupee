@@ -52,7 +52,7 @@ ARG VIPS_VERSION=8.9.1
 RUN wget -O /tmp/vips-${VIPS_VERSION}.tar.gz \
     https://github.com/libvips/libvips/releases/download/v${VIPS_VERSION}/vips-${VIPS_VERSION}.tar.gz && \
     cd /tmp && tar -xvzf vips-${VIPS_VERSION}.tar.gz && cd vips-${VIPS_VERSION} && \
-    ./configure && \
+    ./configure --prefix=/usr && \
     CFLAGS="-I/usr/include/glib-2.0" make -j$(nproc) && make install
 
 

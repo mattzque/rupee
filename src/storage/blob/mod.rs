@@ -3,6 +3,8 @@
 // Licensed under the Apache License, Version 2.0, or the MIT License
 pub mod backend;
 pub mod hashing;
+pub mod config;
+pub mod factory;
 use crate::domain::meta::BlobMeta;
 use backend::bucket::{BucketBlobStorage, BucketBlobStorageConfig};
 use backend::mem::{MemoryBlobStorage, MemoryBlobStorageConfig};
@@ -22,6 +24,13 @@ pub enum BlobStorageError {
     WriteError,
     PutError,
     DeleteError,
+    IOError,
+}
+
+impl From<std::io::Error> for BlobStorageError {
+    fn from(error: std::io::Error) -> Self {
+        BlobStorageError::IOError
+    }
 }
 
 /// Blob References are used to reference previously stored blobs.
@@ -42,7 +51,7 @@ impl fmt::Display for dyn BlobRef {
 /// Trait all storage backends need to implement.
 pub trait BlobStorage {
     /// Reads some binary data from the storage.
-    fn get(&self, meta: &BlobMeta, blob_ref: &Box<dyn BlobRef>) -> Result<&[u8], BlobStorageError>;
+    fn get(&self, meta: &BlobMeta, blob_ref: &Box<dyn BlobRef>) -> Result<Vec<u8>, BlobStorageError>;
 
     /// Persists some binary data into the storage.
     fn put(
@@ -57,21 +66,4 @@ pub trait BlobStorage {
         meta: &BlobMeta,
         blob_ref: &Box<dyn BlobRef>,
     ) -> Result<(), BlobStorageError>;
-}
-
-pub fn create_blob_storage(backend: &str) -> Result<Box<dyn BlobStorage>, BlobStorageError> {
-    match backend {
-        "mem" => {
-            let config = MemoryBlobStorageConfig {};
-            Ok(Box::new(MemoryBlobStorage::new(config)?))
-        }
-        "bucket" => {
-            let config = BucketBlobStorageConfig {
-                path: Path::new("./data").to_path_buf(),
-                max_size: 1024 * 1024 * 1024 * 24,
-            };
-            Ok(Box::new(BucketBlobStorage::new(config)?))
-        }
-        _ => Err(BlobStorageError::UnknownBackendError),
-    }
 }

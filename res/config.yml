@@ -1,0 +1,6 @@
+---
+storage_blob_type: mem
+storage_blob_mem:
+storage_blob_bucket:
+  path: /tmp
+  max_size: 25769803776

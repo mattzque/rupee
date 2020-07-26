@@ -9,12 +9,25 @@
 extern crate rupee;
 extern crate uuid;
 extern crate vips;
+use rupee::{Config};
 use rupee::domain::meta::BlobMeta;
-use rupee::storage::blob::create_blob_storage;
+use rupee::storage::blob::factory::create_blob_storage;
 use vips::Vips;
 
+use std::fs::File;
+use std::path::{Path, PathBuf};
+use std::io::Read;
+
 fn main() {
-    let vips = Vips::new().expect("unexpected vips init error!");
+    // let vips = Vips::new().expect("unexpected vips init error!");
+
+    let config: Config = serde_yaml::from_reader(File::open("res/config.yml").expect("error!")).expect("error!");
+
+    println!("test");
+    println!("{:?}", config);
+    println!("{:?}", config.storage_blob_bucket.path);
+    println!("{:?}", config.storage_blob_bucket.max_size);
+
 }
 
 /*

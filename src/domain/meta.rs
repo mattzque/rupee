@@ -8,15 +8,17 @@ use uuid::Uuid;
 /// Binary Object Meta Data
 pub struct BlobMeta {
     // Stores a unique identifier of this blob.
-    id: Uuid,
+    pub id: Uuid,
 
     // A Binary Hash like MD5 or similar (configurable).
     //checksum: Checksum,
 
     // Metric space embeddings of the content, pHash or similar (configurable).
     //embeddings: HashMap<String, Embedding>,
+
     /// The size of this binary object:
-    size: usize,
+    pub size: usize,
+
     // Mimetype of the blob:
     //mime: Mimetype,
 

@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 use std::usize;
+use serde::{Serialize, Deserialize};
 
 pub struct MemoryBlobRef {
     index: usize,
@@ -27,7 +28,8 @@ impl BlobRef for MemoryBlobRef {
     }
 }
 
-#[derive(Debug, Clone)]
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct MemoryBlobStorageConfig {}
 
 pub struct MemoryBlobStorage {
@@ -45,13 +47,13 @@ impl MemoryBlobStorage {
 }
 
 impl BlobStorage for MemoryBlobStorage {
-    fn get(&self, meta: &BlobMeta, blob_ref: &Box<dyn BlobRef>) -> Result<&[u8], BlobStorageError> {
+    fn get(&self, meta: &BlobMeta, blob_ref: &Box<dyn BlobRef>) -> Result<Vec<u8>, BlobStorageError> {
         if let Some(blob_ref) = blob_ref.any().downcast_ref::<MemoryBlobRef>() {
             let index = blob_ref.index;
             if index >= self.store.len() {
                 Err(BlobStorageError::ReadStorageError)
             } else {
-                Ok(&self.store[index])
+                Ok(self.store[index].clone())
             }
         } else {
             Err(BlobStorageError::ReadBlobRefMismatch)
@@ -74,34 +76,41 @@ impl BlobStorage for MemoryBlobStorage {
         meta: &BlobMeta,
         blob_ref: &Box<dyn BlobRef>,
     ) -> Result<(), BlobStorageError> {
-        Ok(())
+        Ok(())  // no-op
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::storage::blob::BlobStorage;
     use crate::domain::meta::BlobMeta;
-    use crate::storage::blob::create_blob_storage;
+    use crate::{load_fixture};
+    use crate::storage::blob::backend::mem::{MemoryBlobStorage, MemoryBlobStorageConfig};
+    use std::path::{Path, PathBuf};
 
     #[test]
     fn test_blob_mem() {
-        let mut storage = create_blob_storage("mem").expect("mem blob backend can't be created!");
+        let mut storage = MemoryBlobStorage::new(MemoryBlobStorageConfig {})
+            .expect("mem blob backend can't be created!");
 
-        let buffer: Vec<u8> = vec![0, 42, 0];
+        let buffer = load_fixture(Path::new("images").join("rgb.jpeg"));
         let meta = BlobMeta::new(buffer.len());
 
-        assert_eq!(buffer.len(), 3);
-
-        let ref_ = storage
-            .put(&meta, buffer)
+        let reference = storage
+            .put(&meta, buffer.to_vec())
             .expect("put blob in mem storage failed!");
-        let buf = storage
-            .get(&meta, &ref_)
-            .expect("getting blob from the mem storage failed!");
 
-        assert_eq!(buf.len(), 3);
-        assert_eq!(buf[0], 0);
-        assert_eq!(buf[1], 42);
-        assert_eq!(buf[2], 0);
+        // get burrow and copy buffer
+        let buf = storage
+            .get(&meta, &reference)
+            .expect("getting blob from the mem storage failed!").to_vec();
+
+        // no-op
+        storage
+            .delete(&meta, &reference)
+            .expect("deleting blob from the mem storage failed!");
+
+        assert_eq!(buf.len(), buffer.len());
+        assert_eq!(buf, buffer);
     }
 }

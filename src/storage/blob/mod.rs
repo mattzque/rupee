@@ -12,6 +12,7 @@ use std::any::Any;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use typetag::serde;
 
 #[derive(Debug)]
 pub enum BlobStorageError {
@@ -34,6 +35,7 @@ impl From<std::io::Error> for BlobStorageError {
 }
 
 /// Blob References are used to reference previously stored blobs.
+#[typetag::serde(tag = "type", content = "payload")]
 pub trait BlobRef {
     /// Returns the Any trait of the reference for downcasting to concrete types in backends.
     fn any(&self) -> &dyn Any;

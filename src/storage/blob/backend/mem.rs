@@ -13,11 +13,14 @@ use std::fmt;
 use std::sync::Arc;
 use std::usize;
 use serde::{Serialize, Deserialize};
+use typetag::serde;
 
+#[derive(Serialize, Deserialize)]
 pub struct MemoryBlobRef {
-    index: usize,
+    pub index: usize,
 }
 
+#[typetag::serde]
 impl BlobRef for MemoryBlobRef {
     fn any(&self) -> &dyn Any {
         self

@@ -24,16 +24,19 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::usize;
 use std::convert::TryInto;
+use typetag::serde;
 
+#[derive(Serialize, Deserialize)]
 pub struct BucketBlobRef {
     /// This refers to the bucket file index.
-    bucket: usize,
+    pub bucket: usize,
     /// The byte offset within the bucket filename pointing at the blob.
-    offset: usize,
+    pub offset: usize,
     /// The size of the binary blob stored.
-    size: usize,
+    pub size: usize,
 }
 
+#[typetag::serde]
 impl BlobRef for BucketBlobRef {
     fn any(&self) -> &dyn Any {
         self

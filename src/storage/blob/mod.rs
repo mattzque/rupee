@@ -42,11 +42,19 @@ pub trait BlobRef {
 
     /// Helper method for debug/display.
     fn display(&self) -> String;
+
+    fn clone_as_dyn_blob_ref(&self) -> Box<dyn BlobRef + 'static>;
 }
 
 impl fmt::Display for dyn BlobRef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.display())
+    }
+}
+
+impl Clone for Box<dyn BlobRef + 'static> {
+    fn clone(&self) -> Self {
+        self.clone_as_dyn_blob_ref()
     }
 }
 

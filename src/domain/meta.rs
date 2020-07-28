@@ -4,8 +4,10 @@
 use std::fmt;
 use std::usize;
 use uuid::Uuid;
+use serde::{Serialize, Deserialize};
 
 /// Binary Object Meta Data
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct BlobMeta {
     // Stores a unique identifier of this blob.
     pub id: Uuid,

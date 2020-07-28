@@ -15,7 +15,7 @@ use std::usize;
 use serde::{Serialize, Deserialize};
 use typetag::serde;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MemoryBlobRef {
     pub index: usize,
 }
@@ -28,6 +28,10 @@ impl BlobRef for MemoryBlobRef {
 
     fn display(&self) -> String {
         format!("MemoryBlobRef({})", self.index)
+    }
+
+    fn clone_as_dyn_blob_ref(&self) -> Box<dyn BlobRef + 'static> {
+        Box::new(self.clone())
     }
 }
 

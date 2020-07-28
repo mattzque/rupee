@@ -26,7 +26,7 @@ use std::usize;
 use std::convert::TryInto;
 use typetag::serde;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BucketBlobRef {
     /// This refers to the bucket file index.
     pub bucket: usize,
@@ -47,6 +47,10 @@ impl BlobRef for BucketBlobRef {
             "BucketBlobRef(#{}, offset={}, size={})",
             self.bucket, self.offset, self.size
         )
+    }
+
+    fn clone_as_dyn_blob_ref(&self) -> Box<dyn BlobRef + 'static> {
+        Box::new(self.clone())
     }
 }
 

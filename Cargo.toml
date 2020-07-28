@@ -6,7 +6,7 @@ edition = "2018"
 license = "Apache-2.0"
 
 [dependencies]
-uuid = { version = "0.8.1", features = ["v4"] }
+uuid = { version = "0.8.1", features = ["serde", "v4"] }
 vips = { path = "./vendor/vips" }
 actix-web = "2.0.0"
 serde = "1.0.114"

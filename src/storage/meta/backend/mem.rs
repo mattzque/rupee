@@ -38,14 +38,14 @@ impl MetaStorage for MemoryMetaStorage {
         Ok(())
     }
 
-    fn get_meta(&self, id: Uuid) -> Result<Option<BlobMeta>, MetaStorageError> {
+    fn get_meta(&mut self, id: Uuid) -> Result<Option<BlobMeta>, MetaStorageError> {
         match self.metas.get(&id) {
             Some(meta) => Ok(Some(*meta)),
             None => Ok(None)
         }
     }
 
-    fn get_blob_refs(&self, id: Uuid) -> Result<Option<HashMap<String, Box<dyn BlobRef>>>, MetaStorageError> {
+    fn get_blob_refs(&mut self, id: Uuid) -> Result<Option<HashMap<String, Box<dyn BlobRef>>>, MetaStorageError> {
         match self.blob_refs.get(&id) {
             Some(blob_refs) => Ok(Some((*blob_refs).clone())),
             None => Ok(None)

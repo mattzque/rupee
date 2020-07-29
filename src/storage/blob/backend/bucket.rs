@@ -266,8 +266,6 @@ impl BucketBlobStorage {
     /// Global Bucket Blob Storage Initialization function.
     /// This function is called only once per program lifetime, it is used to do various
     /// checks and preparations on the storage backend.
-    /// Afterwards N number of backends are created in a pool, with one backend per thread.
-    /// Note that the backend new function is called in parallel an undefined number of times.
     pub fn init(config: &BucketBlobStorageConfig) -> Result<(), BlobStorageError> {
         // create the block storage directory
         if !config.path.is_dir() {

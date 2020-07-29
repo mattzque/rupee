@@ -18,6 +18,8 @@ use serde::{Serialize, Deserialize};
 #[derive(Debug)]
 pub enum MetaStorageError {
     UnknownBackendError,
+    CreateStorageError(&'static str),
+    BackendError(&'static str),
     InitError,
     PutError,
 }
@@ -32,10 +34,10 @@ pub trait MetaStorage {
     ) -> Result<(), MetaStorageError>;
 
     /// Load meta object from storage.
-    fn get_meta(&self, id: Uuid) -> Result<Option<BlobMeta>, MetaStorageError>;
+    fn get_meta(&mut self, id: Uuid) -> Result<Option<BlobMeta>, MetaStorageError>;
 
     /// Load blob refs from storage.
-    fn get_blob_refs(&self, id: Uuid) -> Result<Option<HashMap<String, Box<dyn BlobRef>>>, MetaStorageError>;
+    fn get_blob_refs(&mut self, id: Uuid) -> Result<Option<HashMap<String, Box<dyn BlobRef>>>, MetaStorageError>;
 
     /// Delete meta and blob refs from storage.
     fn delete(&mut self, id: Uuid) -> Result<(), MetaStorageError>;
